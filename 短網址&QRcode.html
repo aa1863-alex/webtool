@@ -1,0 +1,388 @@
+
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>短網址 + QR Code 小工具</title>
+  <meta name="color-scheme" content="light dark">
+  <style>
+    :root{
+      --bg:#0b0c10;
+      --fg:#e8e8ea;
+      --muted:#9aa0a6;
+      --card:#111317;
+      --accent:#4f8cff;
+      --accent-2:#7cc6ff;
+      --danger:#ff5d6c;
+      --ok:#17c964;
+      --border:#1f232b;
+      --shadow: 0 10px 30px rgba(0,0,0,.18);
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#f7f8fb; --fg:#1b1f24; --muted:#69707a; --card:#ffffff; --border:#e6e8eb;
+        --shadow: 0 12px 26px rgba(16,24,40,.1);
+      }
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background: radial-gradient(1200px 600px at 10% 0%, rgba(79,140,255,.15), transparent 60%),
+                 radial-gradient(900px 500px at 90% 10%, rgba(124,198,255,.12), transparent 60%),
+                 var(--bg);
+      color:var(--fg); font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      display:grid; place-items:center; padding:24px;
+    }
+    .app{
+      width:min(720px, 100%); background:var(--card); border:1px solid var(--border); border-radius:16px;
+      box-shadow:var(--shadow); overflow:hidden;
+    }
+    header{padding:18px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px}
+    header svg{width:24px;height:24px;color:var(--accent)}
+    header h1{font-size:18px; margin:0; letter-spacing:.3px}
+    .content{padding:20px; display:grid; gap:16px}
+    .row{display:grid; grid-template-columns: 1fr auto; gap:12px}
+    .row-3{display:grid; grid-template-columns: 1fr auto auto auto; gap:10px}
+    .field{display:flex; flex-direction:column; gap:8px}
+    label{font-size:13px; color:var(--muted)}
+    input[type="text"], input[type="url"]{
+      width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:12px; background:transparent; color:var(--fg);
+      outline:none; transition:border-color .15s ease, box-shadow .15s ease;
+    }
+    input::placeholder{color:var(--muted)}
+    input:focus{border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in oklab, var(--accent) 25%, transparent)}
+    .btn{
+      appearance:none; border:1px solid var(--border); background:linear-gradient(180deg, color-mix(in oklab, var(--accent) 14%, transparent), transparent);
+      color:var(--fg); padding:10px 14px; border-radius:12px; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+      transition: transform .05s ease, background .2s ease, border-color .2s ease;
+      height:44px;
+    }
+    .btn:hover{border-color:color-mix(in oklab, var(--accent) 40%, var(--border));}
+    .btn:active{transform:translateY(1px)}
+    .btn.accent{background:linear-gradient(180deg, var(--accent), var(--accent-2)); color:#fff; border:none}
+    .btn.danger{border-color:transparent; background:linear-gradient(180deg, #ff6a7a, #ff4156); color:#fff}
+    .btn.ghost{background:transparent}
+    .small{font-size:12px; color:var(--muted)}
+    .result{
+      display:grid; gap:14px; padding:14px; border:1px dashed var(--border); border-radius:14px; background:color-mix(in oklab, var(--card) 80%, transparent);
+    }
+    .qr-wrap{display:flex; align-items:center; gap:16px; flex-wrap:wrap}
+    .qr-box{
+      width:220px; height:220px; background: #fff; border-radius:12px; display:grid; place-items:center; overflow:hidden; border:1px solid var(--border)
+    }
+    .qr-box img{max-width:100%; max-height:100%; display:block}
+    .outputs{display:flex; flex:1; min-width:220px; gap:10px; align-items:center}
+    .outputs input{flex:1}
+    .hint{font-size:12px; color:var(--muted)}
+    .footer{padding:12px 20px; border-top:1px solid var(--border); color:var(--muted); font-size:12px; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap}
+    .chip{font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--border); color:var(--muted)}
+    .tooltip{position:relative}
+    .tooltip[data-tip]::after{
+      content:attr(data-tip); position:absolute; inset:auto auto 120% 50%; translate:-50% 0;
+      background:#000; color:#fff; font-size:12px; padding:6px 8px; border-radius:8px; opacity:0; pointer-events:none; white-space:nowrap;
+      transition:opacity .15s ease;
+    }
+    .tooltip:hover::after{opacity:.9}
+    @media (max-width:720px){
+      .row-3{grid-template-columns: 1fr 1fr 1fr}
+      .qr-wrap{flex-direction:column; align-items:stretch}
+      .qr-box{width:100%; height:auto; aspect-ratio:1/1}
+      .outputs{width:100%}
+    }
+  </style>
+<script type="text/javascript" nonce="dd7d1d29866544cc9bbfafe656a" src="//local.adguard.org?ts=1761478540171&amp;type=content-script&amp;dmn=www.myai168.com&amp;url=https%3A%2F%2Fwww.myai168.com%2Fupload%2Fkl%2Ftemp%2F20251026%2F20251026120649334-chatgpt-5-6w8hnd9v-url_shortener_qr_tw.html&amp;app=chrome.exe&amp;css=3&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1"></script><script type="text/javascript" nonce="dd7d1d29866544cc9bbfafe656a" src="//local.adguard.org?ts=1761478540171&amp;name=AdGuard%20Extra&amp;name=AdGuard%20Popup%20Blocker&amp;type=user-script"></script></head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+        <path d="M3 14h7v7H3z"></path>
+      </svg>
+      <h1>短網址 + QR Code 小工具</h1>
+    </header>
+
+    <section class="content">
+      <div class="field">
+        <label for="url">貼上網址</label>
+        <div class="row">
+          <input id="url" type="url" inputmode="url" placeholder="例如：https://example.com/awesome-article" autocomplete="on">
+          <button id="btnShorten" class="btn accent tooltip" data-tip="使用 is.gd / CleanURI（可選填 Bitly Token）">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 1 7 7l-3 3a5 5 0 1 1-7-7"/><path d="M14 11a5 5 0 0 1-7-7l3-3a5 5 0 0 1 7 7"/></svg>
+            產生短網址
+          </button>
+        </div>
+        <div class="row-3">
+          <div class="field">
+            <label for="bitly">Bitly Token（可選）</label>
+            <input id="bitly" type="text" placeholder="若您有 Bitly 個人存取權杖，可提高穩定性">
+          </div>
+          <button id="btnQR" class="btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M3 14h7v7H3z"/></svg>
+            產生 QR Code
+          </button>
+          <button id="btnReset" class="btn ghost">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-9 9z"/><path d="M3 12h6"/><path d="M3 12V6"/></svg>
+            重設
+          </button>
+        </div>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <div class="qr-wrap">
+          <div class="qr-box" aria-live="polite" aria-busy="false">
+            <img id="qrImg" alt="QR Code 會顯示在此" src="" />
+          </div>
+          <div class="outputs">
+            <input id="shortUrl" type="text" readonly placeholder="短網址會顯示在此">
+            <button id="btnCopy" class="btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              複製
+            </button>
+            <a id="btnDownload" class="btn ghost" href="#" download="qrcode.png">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+              下載 QR
+            </a>
+          </div>
+        </div>
+        <div class="hint" id="hint">QR Code 會優先使用「短網址」，若尚未產生短網址，將改用「原始網址」。</div>
+      </div>
+
+      <p class="small">注意：本工具為前端單頁小程式，網址縮短與 QR 產生使用公開 API，穩定性依第三方服務而定。</p>
+    </section>
+
+    <div class="footer">
+      <div class="chip">v1.0</div>
+      <div>建議以 https 連線開啟，並在桌面或手機瀏覽器使用。</div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const $ = sel => document.querySelector(sel);
+  const els = {
+    url: $('#url'),
+    bitly: $('#bitly'),
+    btnShorten: $('#btnShorten'),
+    btnQR: $('#btnQR'),
+    btnReset: $('#btnReset'),
+    res: $('#result'),
+    qrImg: $('#qrImg'),
+    shortUrl: $('#shortUrl'),
+    btnCopy: $('#btnCopy'),
+    btnDownload: $('#btnDownload'),
+    hint: $('#hint')
+  };
+
+  let state = {
+    longUrl: '',
+    shortUrl: '',
+    qrFor: '' // which url used for QR
+  };
+
+  function normalizeUrl(input){
+    if (!input) return '';
+    let trimmed = input.trim();
+    if (!/^https?:\/\//i.test(trimmed) && !/^mailto:|^tel:/i.test(trimmed)){
+      trimmed = 'https://' + trimmed;
+    }
+    return trimmed;
+  }
+
+  function isValidUrl(value){
+    try{
+      const u = new URL(value);
+      // Accept only http/https/mailto/tel to avoid unsupported schemes for most shorteners
+      return ['http:', 'https:', 'mailto:', 'tel:'].includes(u.protocol);
+    }catch(e){ return false; }
+  }
+
+  function setLoading(btn, loading){
+    if (!btn) return;
+    btn.disabled = loading;
+    btn.dataset.loading = loading ? '1' : '';
+    if (loading){
+      const original = btn.innerHTML;
+      btn.dataset.original = original;
+      btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 50 50" aria-hidden="true"><circle cx="25" cy="25" r="20" stroke="currentColor" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="31.4 31.4"><animateTransform attributeName="transform" type="rotate" values="0 25 25;360 25 25" dur="1s" repeatCount="indefinite"/></circle></svg>處理中…';
+    }else{
+      if (btn.dataset.original){
+        btn.innerHTML = btn.dataset.original;
+      }
+    }
+  }
+
+  async function shortenWithIsGd(longUrl){
+    const api = 'https://is.gd/create.php?format=json&url=' + encodeURIComponent(longUrl);
+    const res = await fetch(api, { method:'GET' });
+    if (!res.ok) throw new Error('is.gd 服務無回應');
+    const data = await res.json();
+    if (data.shorturl) return data.shorturl;
+    throw new Error(data.errormessage || 'is.gd 產生短網址失敗');
+  }
+
+  async function shortenWithCleanURI(longUrl){
+    const res = await fetch('https://cleanuri.com/api/v1/shorten', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: new URLSearchParams({ url: longUrl })
+    });
+    if (!res.ok) throw new Error('CleanURI 服務無回應');
+    const data = await res.json();
+    if (data.result_url) return data.result_url;
+    throw new Error(data.error || 'CleanURI 產生短網址失敗');
+  }
+
+  async function shortenWithBitly(longUrl, token){
+    const res = await fetch('https://api-ssl.bitly.com/v4/shorten', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer ' + token.trim()
+      },
+      body: JSON.stringify({ long_url: longUrl })
+    });
+    const data = await res.json();
+    if (!res.ok){
+      const msg = data && data.message ? data.message : (data && data.description ? data.description : 'Bitly 產生短網址失敗');
+      throw new Error(msg);
+    }
+    if (data.link) return data.link;
+    throw new Error('Bitly 未回傳短網址');
+  }
+
+  async function shortenUrl(longUrl, bitlyToken){
+    // Try Bitly if provided, else try is.gd then CleanURI
+    if (bitlyToken && bitlyToken.trim().length > 0){
+      try { return await shortenWithBitly(longUrl, bitlyToken); } catch(e){ console.warn(e); }
+    }
+    try { return await shortenWithIsGd(longUrl); } catch(e){ console.warn(e); }
+    try { return await shortenWithCleanURI(longUrl); } catch(e){ console.warn(e); }
+    throw new Error('無法產生短網址，請稍後再試或改用 Bitly Token。');
+  }
+
+  function buildQRUrl(target){
+    // 使用 qrserver 公開 API 產生 QR 圖檔
+    const size = 600; // 高解析度，利於下載；容器中會等比縮小
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&qzone=2&data=${encodeURIComponent(target)}`;
+  }
+
+  function showResultArea(){
+    els.res.hidden = false;
+  }
+
+  function updateQR(target){
+    const src = buildQRUrl(target);
+    els.qrImg.src = src;
+    els.btnDownload.href = src;
+    state.qrFor = target;
+    showResultArea();
+  }
+
+  function toastCopy(btn){
+    const original = btn.innerHTML;
+    btn.innerHTML = '已複製！';
+    btn.style.background = 'linear-gradient(180deg, var(--ok), #18b267)';
+    btn.style.color = '#fff';
+    setTimeout(()=>{
+      btn.innerHTML = original;
+      btn.style.background = '';
+      btn.style.color = '';
+    }, 1400);
+  }
+
+  els.btnShorten.addEventListener('click', async () => {
+    const raw = els.url.value;
+    const norm = normalizeUrl(raw);
+    if (!isValidUrl(norm)){
+      alert('請輸入有效的網址（可自動補上 https://）。');
+      els.url.focus();
+      return;
+    }
+    state.longUrl = norm;
+    setLoading(els.btnShorten, true);
+    try{
+      const shorty = await shortenUrl(norm, els.bitly.value);
+      state.shortUrl = shorty;
+      els.shortUrl.value = shorty;
+      updateQR(shorty);
+      els.hint.textContent = '已使用「短網址」產生 QR Code。';
+    }catch(err){
+      console.error(err);
+      alert(err.message || '產生短網址時發生錯誤');
+    }finally{
+      setLoading(els.btnShorten, false);
+    }
+  });
+
+  els.btnQR.addEventListener('click', () => {
+    const raw = els.url.value;
+    const norm = normalizeUrl(raw);
+    if (!isValidUrl(norm)){
+      alert('請輸入有效的網址（可自動補上 https://）。');
+      els.url.focus();
+      return;
+    }
+    state.longUrl = norm;
+    const target = state.shortUrl || norm; // prefer short URL if exists
+    updateQR(target);
+    els.hint.textContent = state.shortUrl ? '已使用「短網址」產生 QR Code。' : '尚未有短網址，改以「原始網址」產生 QR Code。';
+  });
+
+  els.btnCopy.addEventListener('click', async () => {
+    const value = els.shortUrl.value.trim();
+    if (!value){
+      alert('尚未有可複製的短網址，請先產生短網址。');
+      return;
+    }
+    try{
+      if (navigator.clipboard && window.isSecureContext){
+        await navigator.clipboard.writeText(value);
+      }else{
+        // fallback
+        els.shortUrl.select();
+        document.execCommand('copy');
+        els.shortUrl.blur();
+      }
+      toastCopy(els.btnCopy);
+    }catch(e){
+      alert('複製失敗，請手動選取文字後複製。');
+    }
+  });
+
+  els.btnReset.addEventListener('click', () => {
+    state = { longUrl:'', shortUrl:'', qrFor:'' };
+    els.url.value='';
+    els.shortUrl.value='';
+    els.qrImg.removeAttribute('src');
+    els.btnDownload.href = '#';
+    els.res.hidden = true;
+    els.hint.textContent = 'QR Code 會優先使用「短網址」，若尚未產生短網址，將改用「原始網址」。';
+    els.url.focus();
+  });
+
+  // UX: paste to auto-run QR
+  els.url.addEventListener('paste', (e)=>{
+    setTimeout(()=>{
+      const norm = normalizeUrl(els.url.value);
+      if (isValidUrl(norm)){
+        state.longUrl = norm;
+        updateQR(norm);
+        els.hint.textContent = '預先以「原始網址」產生 QR Code。';
+      }
+    }, 0);
+  });
+
+  // Enter key => shorten
+  els.url.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter'){
+      e.preventDefault();
+      els.btnShorten.click();
+    }
+  });
+})();
+</script>
+</body>
+</html>
