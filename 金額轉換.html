@@ -1,0 +1,237 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>金額轉換工具</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+        h2 {
+            margin-top: 0;
+            color: #1f2937;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 30px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #4b5563;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input[type="number"]:focus {
+            border-color: #3b82f6;
+        }
+        .result-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #f8fafc;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #f1f5f9;
+        }
+        .result-content {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .result-label {
+            font-size: 13px;
+            color: #64748b;
+        }
+        .result-text {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0f172a;
+            min-height: 28px;
+        }
+        .copy-btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-size: 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            margin-left: 15px;
+        }
+        .copy-btn:hover {
+            background-color: #2563eb;
+        }
+        .copy-btn.copied {
+            background-color: #10b981;
+        }
+        /* 隱藏數字輸入框的上下箭頭 */
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>金額轉換工具</h2>
+    
+    <div class="input-group">
+        <label for="amountInput">請輸入純數字金額：</label>
+        <input type="number" id="amountInput" placeholder="例如：4678000" min="0" oninput="convertAmount()">
+    </div>
+
+    <div class="result-group">
+        <div class="result-content">
+            <span class="result-label">一、純數字千分位</span>
+            <span class="result-text" id="format1"></span>
+        </div>
+        <button class="copy-btn" onclick="copyText('format1', this)">複製</button>
+    </div>
+
+    <div class="result-group">
+        <div class="result-content">
+            <span class="result-label">二、中西混合格式</span>
+            <span class="result-text" id="format2"></span>
+        </div>
+        <button class="copy-btn" onclick="copyText('format2', this)">複製</button>
+    </div>
+
+    <div class="result-group">
+        <div class="result-content">
+            <span class="result-label">三、傳統大寫數字</span>
+            <span class="result-text" id="format3"></span>
+        </div>
+        <button class="copy-btn" onclick="copyText('format3', this)">複製</button>
+    </div>
+</div>
+
+<script>
+    function convertAmount() {
+        const inputVal = document.getElementById('amountInput').value;
+        const num = parseInt(inputVal, 10);
+
+        if (isNaN(num)) {
+            document.getElementById('format1').innerText = "";
+            document.getElementById('format2').innerText = "";
+            document.getElementById('format3').innerText = "";
+            return;
+        }
+
+        // 格式一：千分位 (例如：4,678,000)
+        document.getElementById('format1').innerText = num.toLocaleString('en-US');
+
+        // 格式二：中西式混合 (例如：467萬8,000元)
+        document.getElementById('format2').innerText = toMixedFormat(num);
+
+        // 格式三：大寫數字 (例如：肆佰陸拾柒萬捌仟元)
+        document.getElementById('format3').innerText = toChineseNumeral(num);
+    }
+
+    // 中西式混合格式邏輯
+    function toMixedFormat(num) {
+        if (num === 0) return '0元';
+        let yi = Math.floor(num / 100000000);
+        let wan = Math.floor((num % 100000000) / 10000);
+        let rest = num % 10000;
+
+        let result = '';
+        if (yi > 0) result += yi.toLocaleString('en-US') + '億';
+        if (wan > 0) result += wan.toLocaleString('en-US') + '萬';
+        if (rest > 0 || (yi === 0 && wan === 0)) {
+            result += rest.toLocaleString('en-US');
+        }
+        return result + '元';
+    }
+
+    // 大寫數字轉換邏輯
+    function toChineseNumeral(num) {
+        if (num === 0) return '零元';
+
+        const digits = ['零', '壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖'];
+        const units = ['', '拾', '佰', '仟'];
+        const bigUnits = ['', '萬', '億', '兆'];
+
+        let strNum = num.toString();
+        let result = '';
+        let zeroCount = 0;
+
+        for (let i = 0, len = strNum.length; i < len; i++) {
+            let p = len - i - 1;       // 由右至左的位數 (0-indexed)
+            let q = Math.floor(p / 4); // 大單位層級 (萬、億)
+            let m = p % 4;             // 小單位層級 (拾、佰、仟)
+            let n = parseInt(strNum[i]);
+
+            if (n === 0) {
+                zeroCount++;
+            } else {
+                if (zeroCount > 0) {
+                    result += digits[0]; // 補零
+                }
+                zeroCount = 0;
+                result += digits[n] + units[m];
+            }
+
+            // 處理大單位 (萬、億)，若該段4位數皆為0則不加單位
+            if (m === 0 && zeroCount < 4) {
+                result += bigUnits[q];
+            }
+            // 進入下一個大單位段落時重置連續零的計數
+            if (m === 0) {
+                zeroCount = 0;
+            }
+        }
+        return result + '元';
+    }
+
+    // 複製功能邏輯
+    function copyText(elementId, btnElement) {
+        const textToCopy = document.getElementById(elementId).innerText;
+        if (!textToCopy) return;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            // 按鈕視覺回饋
+            const originalText = btnElement.innerText;
+            btnElement.innerText = "已複製!";
+            btnElement.classList.add("copied");
+            
+            setTimeout(() => {
+                btnElement.innerText = originalText;
+                btnElement.classList.remove("copied");
+            }, 1500);
+        }).catch(err => {
+            alert('複製失敗，請手動選取複製');
+        });
+    }
+</script>
+
+</body>
+</html>
